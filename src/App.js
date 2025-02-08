@@ -1,70 +1,82 @@
 import "./App.css";
 import { useEffect, useState } from "react";
-import { ref, onValue, push, set, remove } from "firebase/database";
-import { tasks } from "./firebase";
 
 function App() {
-  const [task, setTask] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [newTask, setNewTask] = useState(false);
 
   useEffect(() => {
-    const tasksDbRef = ref(tasks, "tasks");
-    return onValue(tasksDbRef, (snapshot) => {
-      const loadedTasks = snapshot.val() || [];
-      setTask(loadedTasks);
-      setIsLoading(false);
-    });
-  }, []);
+    setIsLoading(true);
+    fetch("http://localhost:3005/tasks")
+      .then((response) => response.json())
+      .then((json) => {
+        setTasks(json);
+        setFilterWord(json);
+      })
+      .finally(() => setIsLoading(false));
+  }, [newTask]);
+
+  const fetchTasks = () => {
+    fetch("http://localhost:3005/tasks")
+      .then((response) => response.json())
+      .then((data) => setTasks(data));
+  };
 
   const addNewTask = () => {
-    const pushedTask = ref(tasks, "tasks");
-    push(pushedTask, {
-      title: "new task with firebase1",
-      completed: false,
-    }).then((response) => console.log(response));
+    fetch("http://localhost:3005/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json;charset=utf-8" },
+      body: JSON.stringify({
+        title: "my task",
+        completed: false,
+      }),
+    })
+      .then((response) => response.json())
+      .then((json) => setNewTask(!newTask));
   };
 
-  const updateTask = () => {
-    const updatedTask = ref(tasks, "tasks/f848");
-    set(updatedTask, {
-      title: "Покушать",
-      completed: false,
-    }).then((response) => console.log(response));
+  const updateTask = (id) => {
+    fetch(`http://localhost:3005/tasks/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json;charset=utf-8" },
+      body: JSON.stringify({
+        title: "дело обновлено",
+        completed: true,
+      }),
+    })
+      .then((response) => response.json())
+      .then((json) => setNewTask(!newTask));
   };
 
-  const deleteTask = () => {
-    const deletedTask = ref(tasks, "tasks/d466");
-    remove(deletedTask).then((response) => console.log(response));
+  const deleteTask = (id) => {
+    console.log(id)
+    fetch(`http://localhost:3005/tasks/${id}`, {
+      method: "DELETE",
+    }).then(() => fetchTasks());
   };
 
   const [searchWord, setsearchWord] = useState("");
   const [filterWord, setFilterWord] = useState([]);
   const [isItFiltered, setIsItFiltered] = useState(false);
-  
+
   const onCheckWord = ({ target }) => {
     const value = target.value.toLowerCase();
     setsearchWord(value);
 
-    console.log(Object.entries(task));
-    const filtered = Object.entries(task).filter(([id, task]) =>
-      task.title.toLowerCase().includes(value)
-    );
-    console.log(filtered);
+    const filtered = tasks.filter((i) => i.title.toLowerCase().includes(value));
     setFilterWord(filtered);
     setIsItFiltered(true);
-    setIsItSorted(false);
   };
 
   const [sort, setSort] = useState([]);
   const [isItSorted, setIsItSorted] = useState(false);
   const sortFunction = () => {
-    const sortedList = Object.entries(task).sort(([idA, taskA], [idB, taskB]) =>
-      taskA.title.localeCompare(taskB.title)
+    const sortedList = [...tasks].sort((a, b) =>
+      a.title.localeCompare(b.title)
     );
     setSort(sortedList);
     setIsItSorted(true);
-    setIsItFiltered(false);
   };
 
   return (
@@ -79,35 +91,37 @@ function App() {
       <button className="filter-althabit-button" onClick={sortFunction}>
         Фильтрация по алфавиту
       </button>
-      <button
-        className="filter-althabit-button"
-        onClick={() => {
-          setIsItFiltered(false);
-          setIsItSorted(false);
-        }}
-      >
-        Сбросить фильтры
-      </button>
       <div className="title">Мой список дел:</div>
       {isLoading ? (
         <div className="loader"></div>
-      ) : (
-        (isItSorted
-          ? sort
-          : isItFiltered
-          ? filterWord
-          : Object.entries(task)
-        ).map(([id, { title }]) => (
+      ) : isItSorted ? (
+        sort.map(({ id, title }) => (
           <div key={id} className="task">
-            {id}. {title}
+            {title}
+            <button onClick={() => updateTask(id)}>Обновить созданное дело</button>
+            <button onClick={deleteTask(id)}>Удалить созданное дело</button>
+          </div>
+        ))
+      ) : isItFiltered ? (
+        filterWord.map(({ id, title }) => (
+          <div key={id} className="task">
+            {title}
+            <button onClick={() => updateTask(id)}>Обновить созданное дело</button>
+            <button onClick={deleteTask(id)}>Удалить созданное дело</button>
+          </div>
+        ))
+      ) : (
+        tasks.map(({ id, title }) => (
+          <div key={id} className="task">
+            {title}
+            <button onClick={() => updateTask(id)}>Обновить созданное дело</button>
+            <button onClick={() => deleteTask(id)}>Удалить созданное дело</button>
           </div>
         ))
       )}
 
       <div className="buttonTasks">
         <button onClick={addNewTask}>Добавить новое дело</button>
-        <button onClick={updateTask}>Обновить созданное дело</button>
-        <button onClick={deleteTask}>Удалить созданное дело</button>
       </div>
     </div>
   );
