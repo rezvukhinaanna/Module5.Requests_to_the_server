@@ -1,0 +1,16 @@
+.button-controle {
+  display: flex;
+  align-items: center;
+}
+
+.buttonTasks {
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.filter-althabit-button {
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+}
